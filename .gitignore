@@ -1,1 +1,10 @@
-*.pcap
+pcaps/
+venv/
+results/
+tests/
+scripts/
+papers/
+builds/
+
+.DS_Store
+*test*

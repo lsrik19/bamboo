@@ -1,0 +1,20 @@
+# Bamboo NIDS Configuration
+
+# Network Capture Settings
+pcap_path: "" # Path to PCAP file (leave empty for live capture)
+interface: "en0"                                  # Live capture interface (e.g., "eth0")
+snap_len: 256                                  # Snapshot length for packet capture
+csv_output: "results/scores.csv"               # Where to log scores (empty string disables CSV logging)
+
+# Bamboo Hyperparameters
+num_features: 100         # 20 per lambda × 5 lambdas
+max_cluster_m: 10         # Max features per autoencoder
+fm_grace_period: 50000   # N_FM: packets to learn feature clustering
+ad_grace_period: 200000  # N_AD: packets to train autoencoders
+threshold_beta: 4.0       # Log-Normal Sigma multiplier for anomaly threshold
+
+# Observability
+metrics_enabled: false     # Expose Prometheus metrics endpoint
+metrics_port: 8080        # Port for Prometheus metrics server
+log_level: "debug"         # Logging level: debug, info, warn, error
+test_mode: true           # Enable clean, human-readable console output (suppresses JSON packet logs)

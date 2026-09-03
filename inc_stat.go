@@ -4,13 +4,13 @@ import (
 	"math"
 )
 
-// maintains rolling damped 1D and 2D statistics
+// IncStat maintains rolling damped 1D statistics (matches original AfterImage incStat)
 type IncStat struct {
 	Lambda float64 // Decay factor λ
 	Tlast  float64 // Last packet arrival time (seconds)
 	W      float64 // Damped weight (packet count)
-	LS     float64 // Linear sum of values
-	SS     float64 // Sum of squared values
+	LS     float64 // Linear sum of values (CF1)
+	SS     float64 // Sum of squared values (CF2)
 }
 
 // creates a new incremental statistic for a given lambda
@@ -18,7 +18,7 @@ func NewIncStat(lambda float64) *IncStat {
 	return &IncStat{
 		Lambda: lambda,
 		Tlast:  0,
-		W:      0,
+		W:      1e-20, // match original: avoid division by zero
 		LS:     0,
 		SS:     0,
 	}
@@ -26,26 +26,22 @@ func NewIncStat(lambda float64) *IncStat {
 
 // Update decays past state and inserts new observation x at timestamp t
 func (s *IncStat) Update(x float64, t float64) {
-	if s.Tlast == 0 {
-		s.Tlast = t
-		s.W = 1
-		s.LS = x
-		s.SS = x * x
-		return
+	// Decay existing state
+	if s.Tlast > 0 {
+		dt := t - s.Tlast
+		if dt > 0 {
+			gamma := math.Exp2(-s.Lambda * dt)
+			s.W *= gamma
+			s.LS *= gamma
+			s.SS *= gamma
+		}
 	}
-
-	dt := t - s.Tlast
-	if dt < 0 {
-		dt = 0 // Guard against out-of-order packet timing anomalies
-	}
-
-	// Exponential decay: gamma = 2^(-lambda * dt)
-	gamma := math.Exp2(-s.Lambda * dt)
-
-	s.W = s.W*gamma + 1.0
-	s.LS = s.LS*gamma + x
-	s.SS = s.SS*gamma + (x * x)
 	s.Tlast = t
+
+	// Update with new observation
+	s.LS += x
+	s.SS += x * x
+	s.W += 1.0
 }
 
 // returns the decayed packet count (rate proxy)
@@ -61,16 +57,13 @@ func (s *IncStat) Mean() float64 {
 	return s.LS / s.W
 }
 
-// returns the running variance
+// returns the running variance (matches original: abs(CF2/w - mean^2))
 func (s *IncStat) Variance() float64 {
 	if s.W <= 0 {
 		return 0
 	}
 	mean := s.Mean()
-	variance := (s.SS / s.W) - (mean * mean)
-	if variance < 0 {
-		return 0
-	}
+	variance := math.Abs(s.SS/s.W - mean*mean)
 	return variance
 }
 
@@ -79,67 +72,125 @@ func (s *IncStat) StdDev() float64 {
 	return math.Sqrt(s.Variance())
 }
 
+// AllStats1D returns [weight, mean, variance] matching original allstats_1D()
+func (s *IncStat) AllStats1D() (float64, float64, float64) {
+	mean := s.Mean()
+	variance := math.Abs(s.SS/s.W - mean*mean)
+	return s.W, mean, variance
+}
 
-// IncStat2D tracks the 2D interaction between two streams
-type IncStat2D struct {
+// IncStatCov tracks the bidirectional covariance between two streams
+// using the residual-product approach from the original AfterImage incStat_cov
+type IncStatCov struct {
 	Lambda float64
-	Tlast  float64
-	W      float64
-	LS_x   float64
-	LS_y   float64
-	SS_x   float64
-	SS_y   float64
-	SR     float64 // Sum of Residuals: Sum(x * y)
+
+	// Per-stream 1D stats (embedded — each side of the bidirectional flow)
+	Streams [2]IncStat
+
+	// Covariance tracking
+	CovTlast float64    // last timestamp for covariance decay
+	CovW     float64    // covariance weight
+	CF3      float64    // sum of cross-residual products
+	LastRes  [2]float64 // last residual per stream
 }
 
-func NewIncStat2D(lambda float64) *IncStat2D {
-	return &IncStat2D{Lambda: lambda}
-}
-
-func (s *IncStat2D) Update(x, y, t float64) {
-	if s.Tlast == 0 {
-		s.Tlast = t
-		s.W = 1
-		s.LS_x, s.LS_y = x, y
-		s.SS_x, s.SS_y = x*x, y*y
-		s.SR = x * y
-		return
+func NewIncStatCov(lambda float64) *IncStatCov {
+	return &IncStatCov{
+		Lambda: lambda,
+		Streams: [2]IncStat{
+			{Lambda: lambda, W: 1e-20},
+			{Lambda: lambda, W: 1e-20},
+		},
+		CovW: 1e-20,
 	}
-
-	dt := t - s.Tlast
-	if dt < 0 {
-		dt = 0
-	}
-	gamma := math.Exp2(-s.Lambda * dt)
-
-	s.W = s.W*gamma + 1.0
-	s.LS_x = s.LS_x*gamma + x
-	s.LS_y = s.LS_y*gamma + y
-	s.SS_x = s.SS_x*gamma + (x * x)
-	s.SS_y = s.SS_y*gamma + (y * y)
-	s.SR = s.SR*gamma + (x * y)
-	s.Tlast = t
 }
 
-// computes Cov(X, Y)
-func (s *IncStat2D) Covariance() float64 {
-	if s.W <= 0 {
+// Update processes a new observation for the given stream (0 or 1).
+// This matches the original's combined update_get_1D_Stats + update_cov flow.
+func (c *IncStatCov) Update(streamIdx int, v float64, t float64) {
+	otherIdx := 1 - streamIdx
+
+	// 1. Update the current stream's 1D stats
+	c.Streams[streamIdx].Update(v, t)
+
+	// 2. Decay the OTHER stream's 1D stats to current time (without adding a value)
+	c.decayStream(otherIdx, t)
+
+	// 3. Decay covariance state
+	c.decayCov(t, streamIdx)
+
+	// 4. Compute current stream's residual (using updated mean)
+	res := v - c.Streams[streamIdx].Mean()
+
+	// 5. Cross-product with other stream's last residual
+	crossResid := res * c.LastRes[otherIdx]
+	c.CF3 += crossResid
+	c.CovW += 1.0
+
+	// 6. Store current residual
+	c.LastRes[streamIdx] = res
+}
+
+// decayStream decays a stream's 1D stats to timestamp t without adding a value
+func (c *IncStatCov) decayStream(idx int, t float64) {
+	s := &c.Streams[idx]
+	if s.Tlast > 0 {
+		dt := t - s.Tlast
+		if dt > 0 {
+			gamma := math.Exp2(-s.Lambda * dt)
+			s.W *= gamma
+			s.LS *= gamma
+			s.SS *= gamma
+			s.Tlast = t
+		}
+	}
+}
+
+// decayCov decays the covariance state
+func (c *IncStatCov) decayCov(t float64, streamIdx int) {
+	dt := t - c.CovTlast
+	if dt > 0 {
+		gamma := math.Exp2(-c.Lambda * dt)
+		c.CF3 *= gamma
+		c.CovW *= gamma
+		c.CovTlast = t
+		c.LastRes[streamIdx] *= gamma
+	}
+}
+
+// Covariance returns the covariance estimate
+func (c *IncStatCov) Covariance() float64 {
+	if c.CovW <= 0 {
 		return 0
 	}
-	meanX := s.LS_x / s.W
-	meanY := s.LS_y / s.W
-	cov := (s.SR / s.W) - (meanX * meanY)
-	return cov
+	return c.CF3 / c.CovW
 }
 
-// computes Pearson correlation coeff
-func (s *IncStat2D) Correlation() float64 {
-	cov := s.Covariance()
-	varX := (s.SS_x / s.W) - math.Pow(s.LS_x/s.W, 2)
-	varY := (s.SS_y / s.W) - math.Pow(s.LS_y/s.W, 2)
-	denom := math.Sqrt(math.Abs(varX * varY))
-	if denom <= 0 {
+// Correlation returns the Pearson correlation coefficient
+func (c *IncStatCov) Correlation() float64 {
+	cov := c.Covariance()
+	ss := c.Streams[0].StdDev() * c.Streams[1].StdDev()
+	if ss == 0 {
 		return 0
 	}
-	return cov / denom
+	return cov / ss
+}
+
+// Radius returns sqrt(var_src^2 + var_dst^2) — L2 norm of variances
+func (c *IncStatCov) Radius() float64 {
+	v0 := c.Streams[0].Variance()
+	v1 := c.Streams[1].Variance()
+	return math.Sqrt(v0*v0 + v1*v1)
+}
+
+// Magnitude returns sqrt(mean_src^2 + mean_dst^2) — L2 norm of means
+func (c *IncStatCov) Magnitude() float64 {
+	m0 := c.Streams[0].Mean()
+	m1 := c.Streams[1].Mean()
+	return math.Sqrt(m0*m0 + m1*m1)
+}
+
+// Stats2D returns [radius, magnitude, covariance, pcc] matching original get_stats2()
+func (c *IncStatCov) Stats2D() (float64, float64, float64, float64) {
+	return c.Radius(), c.Magnitude(), c.Covariance(), c.Correlation()
 }
