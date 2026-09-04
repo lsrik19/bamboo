@@ -1,3 +1,8 @@
+// Package main implements incremental damped statistics for network traffic monitoring.
+//
+// Theoretical Foundation:
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.1: AfterImage).
+//   - Welford, B. P., "Note on a Method for Calculating Corrected Sums of Squares and Products", Technometrics 1962.
 package main
 
 import (
@@ -47,6 +52,15 @@ func (s *IncStat) Update(x float64, t float64) {
 // returns the decayed packet count (rate proxy)
 func (s *IncStat) Weight() float64 {
 	return s.W
+}
+
+// DecayedWeight returns the estimated weight decayed to currentTime without mutating internal state
+func (s *IncStat) DecayedWeight(currentTime float64) float64 {
+	if s.Tlast <= 0 || currentTime <= s.Tlast {
+		return s.W
+	}
+	dt := currentTime - s.Tlast
+	return s.W * math.Exp2(-s.Lambda*dt)
 }
 
 // returns the running average
@@ -156,6 +170,17 @@ func (c *IncStatCov) decayCov(t float64, streamIdx int) {
 		c.CovTlast = t
 		c.LastRes[streamIdx] *= gamma
 	}
+}
+
+// IsDecayed returns true if all stream weights and covariance weight have decayed below threshold
+func (c *IncStatCov) IsDecayed(currentTime float64, threshold float64) bool {
+	w0 := c.Streams[0].DecayedWeight(currentTime)
+	w1 := c.Streams[1].DecayedWeight(currentTime)
+	covW := c.CovW
+	if c.CovTlast > 0 && currentTime > c.CovTlast {
+		covW *= math.Exp2(-c.Lambda * (currentTime - c.CovTlast))
+	}
+	return w0 < threshold && w1 < threshold && covW < threshold
 }
 
 // Covariance returns the covariance estimate

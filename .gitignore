@@ -1,9 +1,9 @@
 pcaps/
+papers/
 venv/
 results/
 tests/
 scripts/
-papers/
 builds/
 
 .DS_Store

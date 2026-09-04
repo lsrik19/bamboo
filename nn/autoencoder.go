@@ -1,3 +1,6 @@
+// Theoretical Foundation:
+//   - Vincent et al., "Extracting and Composing Robust Features with Denoising Autoencoders", ICML 2008.
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.3).
 package nn
 
 import (
@@ -5,8 +8,7 @@ import (
 	"math/rand"
 )
 
-// Autoencoder represents a denoising autoencoder with tied weights (W_prime = W.T)
-// Matches the original Bamboo dA.py implementation
+// Autoencoder represents a single-hidden-layer denoising autoencoder with tied weights (W' = W.T)
 type Autoencoder struct {
 	NIn     int     // Visible input dimension
 	NHidden int     // Bottleneck hidden layer dimension
@@ -21,6 +23,13 @@ type Autoencoder struct {
 	MinVal []float64
 	MaxVal []float64
 	N      int // number of training samples seen
+
+	// Pre-allocated scratch buffers (zero-allocation hot path)
+	scratchNorm []float64 // len = NIn
+	scratchA1   []float64 // len = NHidden
+	scratchY    []float64 // len = NIn
+	scratchLh2  []float64 // len = NIn
+	scratchLh1  []float64 // len = NHidden
 }
 
 func sigmoid(x float64) float64 {
@@ -32,8 +41,13 @@ func sigmoid(x float64) float64 {
 	return 1.0 / (1.0 + math.Exp(-x))
 }
 
-// NewAutoencoder initializes weights uniformly in [-1/n, 1/n] matching original dA.py
+// NewAutoencoder initializes weights uniformly in [-1/n, 1/n] with default seed 1234 matching dA.py
 func NewAutoencoder(nIn int, hiddenRatio float64, lr float64) *Autoencoder {
+	return NewAutoencoderWithSeed(nIn, hiddenRatio, lr, 1234)
+}
+
+// NewAutoencoderWithSeed initializes weights uniformly with a custom RNG seed
+func NewAutoencoderWithSeed(nIn int, hiddenRatio float64, lr float64, seed int64) *Autoencoder {
 	nHidden := int(math.Ceil(float64(nIn) * hiddenRatio))
 	if nHidden < 1 {
 		nHidden = 1
@@ -42,7 +56,7 @@ func NewAutoencoder(nIn int, hiddenRatio float64, lr float64) *Autoencoder {
 	// Original uses 1/n_visible (not 1/sqrt(n))
 	limit := 1.0 / float64(nIn)
 
-	rng := rand.New(rand.NewSource(1234))
+	rng := rand.New(rand.NewSource(seed))
 
 	w := make([][]float64, nIn)
 	for i := range w {
@@ -59,7 +73,7 @@ func NewAutoencoder(nIn int, hiddenRatio float64, lr float64) *Autoencoder {
 		maxVal[i] = math.Inf(-1)
 	}
 
-	return &Autoencoder{
+	ae := &Autoencoder{
 		NIn:     nIn,
 		NHidden: nHidden,
 		LR:      lr,
@@ -70,11 +84,23 @@ func NewAutoencoder(nIn int, hiddenRatio float64, lr float64) *Autoencoder {
 		MaxVal:  maxVal,
 		N:       0,
 	}
+	ae.InitScratchBuffers()
+	return ae
+}
+
+// InitScratchBuffers allocates or resets transient scratch buffers (called after deserialization)
+func (ae *Autoencoder) InitScratchBuffers() {
+	ae.scratchNorm = make([]float64, ae.NIn)
+	ae.scratchA1 = make([]float64, ae.NHidden)
+	ae.scratchY = make([]float64, ae.NIn)
+	ae.scratchLh2 = make([]float64, ae.NIn)
+	ae.scratchLh1 = make([]float64, ae.NHidden)
 }
 
 // Normalize01 updates min/max bounds and scales x into [0, 1]
+// Uses pre-allocated scratchNorm buffer to avoid per-call allocation.
 func (ae *Autoencoder) Normalize01(x []float64, updateBounds bool) []float64 {
-	norm := make([]float64, len(x))
+	norm := ae.scratchNorm
 	for i, val := range x {
 		if updateBounds {
 			if val < ae.MinVal[i] {
@@ -100,7 +126,7 @@ func (ae *Autoencoder) Normalize01(x []float64, updateBounds bool) []float64 {
 // Decode: y  = sigmoid(a1 @ W.T + vbias) = sigmoid(sum_h(a1[h] * W[i][h]) + vbias[i])
 func (ae *Autoencoder) Forward(xNorm []float64) ([]float64, []float64) {
 	// Encode: a1[h] = sigmoid(sum_i(xNorm[i] * W[i][h]) + HBias[h])
-	a1 := make([]float64, ae.NHidden)
+	a1 := ae.scratchA1
 	for h := 0; h < ae.NHidden; h++ {
 		sum := ae.HBias[h]
 		for i := 0; i < ae.NIn; i++ {
@@ -111,7 +137,7 @@ func (ae *Autoencoder) Forward(xNorm []float64) ([]float64, []float64) {
 
 	// Decode: y[i] = sigmoid(sum_h(a1[h] * W[i][h]) + VBias[i])
 	// W.T[h][i] = W[i][h], so dot(a1, W.T) for output i = sum_h(a1[h] * W[i][h])
-	y := make([]float64, ae.NIn)
+	y := ae.scratchY
 	for i := 0; i < ae.NIn; i++ {
 		sum := ae.VBias[i]
 		for h := 0; h < ae.NHidden; h++ {
@@ -131,7 +157,7 @@ func (ae *Autoencoder) TrainStep(x []float64) float64 {
 	a1, z := ae.Forward(xNorm)
 
 	// L_h2 = x - z (reconstruction error, sign convention: target - output)
-	Lh2 := make([]float64, ae.NIn)
+	Lh2 := ae.scratchLh2
 	sse := 0.0
 	for i := 0; i < ae.NIn; i++ {
 		Lh2[i] = xNorm[i] - z[i]
@@ -140,7 +166,7 @@ func (ae *Autoencoder) TrainStep(x []float64) float64 {
 	rmse := math.Sqrt(sse / float64(ae.NIn))
 
 	// L_h1 = dot(L_h2, W) * y * (1-y)   — hidden layer error
-	Lh1 := make([]float64, ae.NHidden)
+	Lh1 := ae.scratchLh1
 	for h := 0; h < ae.NHidden; h++ {
 		sum := 0.0
 		for i := 0; i < ae.NIn; i++ {

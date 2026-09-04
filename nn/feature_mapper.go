@@ -1,3 +1,8 @@
+// Package nn implements the neural network anomaly detection modules of Bamboo.
+//
+// Theoretical Foundation:
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.2: Feature Mapper).
+//   - Partitions features into k correlated clusters with maximum size constraint m using average linkage correlation distance.
 package nn
 
 import (
@@ -5,7 +10,7 @@ import (
 	"sort"
 )
 
-// FeatureMapper groups 115 features into k <= m correlated clusters
+// FeatureMapper groups 100 features into k clusters (each size <= m)
 type FeatureMapper struct {
 	NumFeatures int
 	MaxCluster  int // m: maximum features per autoencoder (e.g. 10)
@@ -18,6 +23,10 @@ type FeatureMapper struct {
 
 	IsTrained bool
 	Clusters  [][]int // The resulting k feature index groups
+
+	// Pre-allocated scratch buffers
+	deltasBuf  []float64   // len = NumFeatures, reused in updateStats
+	subInstBuf [][]float64 // pre-allocated partition output, reused in Process
 }
 
 // initializes the clustering engine
@@ -27,7 +36,7 @@ func NewFeatureMapper(numFeatures, maxCluster, gracePeriod int) *FeatureMapper {
 		c[i] = make([]float64, numFeatures)
 	}
 
-	return &FeatureMapper{
+	fm := &FeatureMapper{
 		NumFeatures: numFeatures,
 		MaxCluster:  maxCluster,
 		GracePeriod: gracePeriod,
@@ -36,6 +45,19 @@ func NewFeatureMapper(numFeatures, maxCluster, gracePeriod int) *FeatureMapper {
 		C:           c,
 		IsTrained:   false,
 		Clusters:    nil,
+	}
+	fm.InitBuffers()
+	return fm
+}
+
+// InitBuffers allocates or restores transient buffers (called after deserialization or clustering)
+func (fm *FeatureMapper) InitBuffers() {
+	fm.deltasBuf = make([]float64, fm.NumFeatures)
+	if fm.Clusters != nil {
+		fm.subInstBuf = make([][]float64, len(fm.Clusters))
+		for i, cluster := range fm.Clusters {
+			fm.subInstBuf[i] = make([]float64, len(cluster))
+		}
 	}
 }
 
@@ -51,15 +73,12 @@ func (fm *FeatureMapper) Process(x []float64) ([][]float64, bool) {
 	}
 
 	// Execution mode: partition vector x into k sub-instances v_1, ..., v_k
-	v := make([][]float64, len(fm.Clusters))
 	for i, cluster := range fm.Clusters {
-		subInstance := make([]float64, len(cluster))
 		for j, featIdx := range cluster {
-			subInstance[j] = x[featIdx]
+			fm.subInstBuf[i][j] = x[featIdx]
 		}
-		v[i] = subInstance
 	}
-	return v, true
+	return fm.subInstBuf, true
 }
 
 // updateStats updates means and covariance online using Welford's multivariate method
@@ -67,7 +86,7 @@ func (fm *FeatureMapper) updateStats(x []float64) {
 	fm.Count++
 	n := float64(fm.Count)
 
-	deltas := make([]float64, fm.NumFeatures)
+	deltas := fm.deltasBuf
 	for i := 0; i < fm.NumFeatures; i++ {
 		deltas[i] = x[i] - fm.Means[i]
 		fm.Means[i] += deltas[i] / n
@@ -167,6 +186,12 @@ func (fm *FeatureMapper) learnMapping() {
 	}
 
 	fm.Clusters = currentClusters
+
+	// Pre-allocate sub-instance partition buffers for execution mode
+	fm.subInstBuf = make([][]float64, len(fm.Clusters))
+	for i, cluster := range fm.Clusters {
+		fm.subInstBuf[i] = make([]float64, len(cluster))
+	}
 }
 
 // computes average distance between two sets of features
