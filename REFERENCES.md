@@ -19,7 +19,7 @@ This document provides academic citations, theoretical backgrounds, and BibTeX e
 ### 1.2 Dynamic Learning & Adversarial Evasion Robustness
 * **Paper:** *Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones*
 * **Authors:** Mohamed elShehaby and Ashraf Matrawy
-* **Preprint:** arXiv:2306.05494 [cs.CR], March 2026 (local copy in [`papers/dynamic_realtime.pdf`](papers/dynamic_realtime.pdf))
+* **Preprint:** [arXiv:2306.05494 [cs.CR]](https://arxiv.org/abs/2306.05494), March 2026
 * **Relevance:**
   * Establishes the real-world practicality gap between computer vision adversarial perturbations and network security constraints (the *Inverse Feature-Mapping Problem*, collateral/side-effect features, and protocol adherence).
   * Demonstrates empirically that continuous re-training and dynamic learning naturally neutralize static gradient-based evasion attacks (e.g., FGSM, PGD, BIM) as decision boundaries shift over time.
@@ -58,7 +58,7 @@ This document provides academic citations, theoretical backgrounds, and BibTeX e
 * **Authors:** Iman Sharafaldin, Arash Habibi Lashkari, and Ali A. Ghorbani
 * **Venue:** Proceedings of the 4th International Conference on Information Systems Security and Privacy (ICISSP 2018)
 * **DOI:** [10.5220/0006639801080116](https://doi.org/10.5220/0006639801080116)
-* **Relevance:** Primary multi-day dataset analyzed in [`papers/dynamic_realtime.pdf`](papers/dynamic_realtime.pdf) to demonstrate how daily retraining mitigates adversarial evasion.
+* **Relevance:** Primary multi-day dataset analyzed by elShehaby & Matrawy ([arXiv:2306.05494](https://arxiv.org/abs/2306.05494)) to demonstrate how daily retraining mitigates adversarial evasion.
 
 ---
 

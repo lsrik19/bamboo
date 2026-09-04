@@ -82,6 +82,6 @@ The timeline below breaks down the execution phase across 200,000-packet windows
 2. **Kitsune / KitNET Architecture**:
    - Y. Mirsky, T. Doitshman, Y. Elovici, and A. Shabtai, *"Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"*, Proceedings of the Network and Distributed System Security Symposium (**NDSS 2018**). [DOI: 10.14722/ndss.2018.23204](https://doi.org/10.14722/ndss.2018.23204).
 3. **Dynamic ML & Evasion Practicality**:
-   - M. elShehaby and A. Matrawy, *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*, arXiv:2306.05494, March 2026. (Archived in [`papers/dynamic_realtime.pdf`](../papers/dynamic_realtime.pdf)).
+   - M. elShehaby and A. Matrawy, *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*, [arXiv:2306.05494](https://arxiv.org/abs/2306.05494), March 2026.
 
 *For complete BibTeX entries and foundational algorithm notes, see [**`REFERENCES.md`**](../REFERENCES.md).*

@@ -90,7 +90,7 @@ Bamboo's algorithms and design are based on the following research:
 2. **Dynamic Learning & Adversarial Evasion Robustness**:  
    Mohamed elShehaby and Ashraf Matrawy.  
    *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*,  
-   arXiv:2306.05494 [cs.CR], March 2026. (Copy archived in [`papers/dynamic_realtime.pdf`](papers/dynamic_realtime.pdf))
+   [arXiv:2306.05494 [cs.CR]](https://arxiv.org/abs/2306.05494), March 2026.
 
 For full bibliographic information, Welford's algorithm notes, dataset citations (UNSW-NB15, CSE-CIC-IDS2018), and copy-pasteable BibTeX entries, see [**`REFERENCES.md`**](REFERENCES.md).
 
