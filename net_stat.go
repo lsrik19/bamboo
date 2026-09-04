@@ -67,7 +67,7 @@ func canonicalSocketPair(a, b SocketKey) (SocketPairKey, int) {
 	return SocketPairKey{SockA: b, SockB: a}, 1
 }
 
-func (ns *NetStat) getOrCreate1D_MacIP(table map[MacIPKey][]*IncStat, key MacIPKey) []*IncStat {
+func getOrCreate1D[K comparable](table map[K][]*IncStat, key K) []*IncStat {
 	if stats, exists := table[key]; exists {
 		return stats
 	}
@@ -79,55 +79,7 @@ func (ns *NetStat) getOrCreate1D_MacIP(table map[MacIPKey][]*IncStat, key MacIPK
 	return stats
 }
 
-func (ns *NetStat) getOrCreate1D_String(table map[string][]*IncStat, key string) []*IncStat {
-	if stats, exists := table[key]; exists {
-		return stats
-	}
-	stats := make([]*IncStat, len(Lambdas))
-	for i, l := range Lambdas {
-		stats[i] = NewIncStat(l)
-	}
-	table[key] = stats
-	return stats
-}
-
-func (ns *NetStat) getOrCreate1D_Jitter(table map[JitterKey][]*IncStat, key JitterKey) []*IncStat {
-	if stats, exists := table[key]; exists {
-		return stats
-	}
-	stats := make([]*IncStat, len(Lambdas))
-	for i, l := range Lambdas {
-		stats[i] = NewIncStat(l)
-	}
-	table[key] = stats
-	return stats
-}
-
-func (ns *NetStat) getOrCreate1D_Socket(table map[SocketKey][]*IncStat, key SocketKey) []*IncStat {
-	if stats, exists := table[key]; exists {
-		return stats
-	}
-	stats := make([]*IncStat, len(Lambdas))
-	for i, l := range Lambdas {
-		stats[i] = NewIncStat(l)
-	}
-	table[key] = stats
-	return stats
-}
-
-func (ns *NetStat) getOrCreateCov_HostPair(table map[HostPairKey][]*IncStatCov, key HostPairKey) []*IncStatCov {
-	if stats, exists := table[key]; exists {
-		return stats
-	}
-	stats := make([]*IncStatCov, len(Lambdas))
-	for i, l := range Lambdas {
-		stats[i] = NewIncStatCov(l)
-	}
-	table[key] = stats
-	return stats
-}
-
-func (ns *NetStat) getOrCreateCov_SocketPair(table map[SocketPairKey][]*IncStatCov, key SocketPairKey) []*IncStatCov {
+func getOrCreateCov[K comparable](table map[K][]*IncStatCov, key K) []*IncStatCov {
 	if stats, exists := table[key]; exists {
 		return stats
 	}
@@ -161,12 +113,12 @@ func (ns *NetStat) UpdateAndExtract(meta *PacketMetaData) []float64 {
 
 	hpKey, hpStreamIdx := canonicalSocketPair(srcSocket, dstSocket)
 
-	macIPStats := ns.getOrCreate1D_MacIP(ns.HT_MAC_IP, macIPKey)
-	srcIPStats := ns.getOrCreate1D_String(ns.HT_SrcIP, meta.SrcIP)
-	hhStats := ns.getOrCreateCov_HostPair(ns.HT_HH, hhKey)
-	jitterStats := ns.getOrCreate1D_Jitter(ns.HT_Jitter, jitKey)
-	hpStats := ns.getOrCreateCov_SocketPair(ns.HT_HpHp, hpKey)
-	srcSockStats := ns.getOrCreate1D_Socket(ns.HT_SrcSock, srcSocket)
+	macIPStats := getOrCreate1D(ns.HT_MAC_IP, macIPKey)
+	srcIPStats := getOrCreate1D(ns.HT_SrcIP, meta.SrcIP)
+	hhStats := getOrCreateCov(ns.HT_HH, hhKey)
+	jitterStats := getOrCreate1D(ns.HT_Jitter, jitKey)
+	hpStats := getOrCreateCov(ns.HT_HpHp, hpKey)
+	srcSockStats := getOrCreate1D(ns.HT_SrcSock, srcSocket)
 
 	// Jitter calculation
 	_, hasLast := ns.LastTime[jitKey]
