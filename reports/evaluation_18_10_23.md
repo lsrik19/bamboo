@@ -72,3 +72,16 @@ The timeline below breaks down the execution phase across 200,000-packet windows
 1. **True Negative Rate (Peacetime)**: **99.89%** true negative rate during the 1-million-packet normal baseline window.
 2. **True Positive Rate (Attack Window)**: **>90%** detection rate across the multi-host UDP flood phase.
 3. **Model Resilience**: Zero concept drift lock-in; Bamboo did not poison its baseline and immediately returned to baseline quietness when the attack ceased.
+
+---
+
+## 5. References
+
+1. **UNSW Sydney IoT Traffic Repository**:
+   - A. Sivanathan, H. H. Gharakheili, F. Loi, A. Radford, C. Xiang, and V. Sivaraman, *"Classifying IoT Devices in Smart Environments Using Network Traffic Characteristics"*, IEEE Transactions on Mobile Computing (TMC), 18(8):1745–1759, 2018.
+2. **Kitsune / KitNET Architecture**:
+   - Y. Mirsky, T. Doitshman, Y. Elovici, and A. Shabtai, *"Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"*, Proceedings of the Network and Distributed System Security Symposium (**NDSS 2018**). [DOI: 10.14722/ndss.2018.23204](https://doi.org/10.14722/ndss.2018.23204).
+3. **Dynamic ML & Evasion Practicality**:
+   - M. elShehaby and A. Matrawy, *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*, arXiv:2306.05494, March 2026. (Archived in [`papers/dynamic_realtime.pdf`](../papers/dynamic_realtime.pdf)).
+
+*For complete BibTeX entries and foundational algorithm notes, see [**`REFERENCES.md`**](../REFERENCES.md).*

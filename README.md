@@ -50,26 +50,49 @@ All settings are in `config.yaml`.
 |---|---|
 | `pcap_path` | Path to a PCAP file. Leave empty for live capture. |
 | `interface` | Network interface for live capture (e.g. `eth0`). |
-| `fm_grace_period` | Packets used to learn feature clustering. |
-| `ad_grace_period` | Packets used to train the autoencoder ensemble. |
-| `threshold_beta` | Sigma multiplier for the log-normal anomaly threshold. |
+| `bpf_filter` | Optional BPF filter expression (e.g. `ip and not broadcast`). |
+| `fm_grace_period` | Packets used to learn feature clustering ($N_{FM}$). |
+| `ad_grace_period` | Packets used to train the autoencoder ensemble ($N_{AD}$). |
+| `threshold_beta` | Sigma multiplier for the log-normal anomaly threshold ($\beta$). |
+| `model_save_path` | Path to save the trained model binary (e.g. `models/bamboo.bin`). |
+| `model_load_path` | Path to load a pre-trained model (skips grace periods). |
+| `cleanup_interval` | Inactivity decay sweep interval in packets (prevents memory growth). |
+| `csv_enabled` | Toggle writing anomaly scores to CSV (`true`/`false`). |
 | `test_mode` | Human-readable terminal output instead of JSON. |
 | `metrics_enabled` | Expose a Prometheus metrics endpoint. |
 
 ## Project Structure
 
 ```
-main.go          Pipeline orchestration
+main.go          CLI & capture initialization
+pipeline.go      NIDS execution pipeline & lifecycle
 config.go        YAML config loader
-capture.go       Packet parsing
-net_stat.go      Feature extraction (zero-allocation struct keys)
-inc_stat.go      Damped incremental statistics
+capture.go       Packet parsing (IPv4, IPv6, ICMP, TCP, UDP, ARP)
+net_stat.go      Feature extraction & decay memory cleanup
+inc_stat.go      Damped incremental statistics (AfterImage)
 metrics.go       Prometheus counters/gauges
 nn/
-  bamboo.go      Autoencoder ensemble (pre-allocated inference)
-  autoencoder.go Single autoencoder (forward/backward)
-  feature_mapper.go  Correntropy clustering
+  bamboo.go          Hierarchical autoencoder ensemble
+  autoencoder.go     Single denoising autoencoder (tied weights)
+  feature_mapper.go  Correlation clustering
+  persistence.go     Gzip-compressed model serialization
 ```
+
+## References & Academic Citations
+
+Bamboo's algorithms and design are based on the following research:
+
+1. **KitNET / Kitsune Architecture**:  
+   Yisroel Mirsky, Tomer Doitshman, Yuval Elovici, and Asaf Shabtai.  
+   *"Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"*,  
+   Proceedings of the Network and Distributed System Security Symposium (**NDSS 2018**). [DOI: 10.14722/ndss.2018.23204](https://doi.org/10.14722/ndss.2018.23204)
+
+2. **Dynamic Learning & Adversarial Evasion Robustness**:  
+   Mohamed elShehaby and Ashraf Matrawy.  
+   *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*,  
+   arXiv:2306.05494 [cs.CR], March 2026. (Copy archived in [`papers/dynamic_realtime.pdf`](papers/dynamic_realtime.pdf))
+
+For full bibliographic information, Welford's algorithm notes, dataset citations (UNSW-NB15, CSE-CIC-IDS2018), and copy-pasteable BibTeX entries, see [**`REFERENCES.md`**](REFERENCES.md).
 
 ## License
 

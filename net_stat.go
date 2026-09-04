@@ -1,3 +1,9 @@
+// Package main implements 100-dimensional damped network feature extraction.
+//
+// Theoretical Foundation:
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018.
+//   - Tracks 5 multi-scale temporal windows (decay lambdas 5.0, 3.0, 1.0, 0.1, 0.01) across 5 traffic contexts:
+//     MAC-IP (1D), Source IP (1D), Jitter (1D), Source Socket (1D), and Host/Socket Pairs (2D covariance).
 package main
 
 var Lambdas = []float64{5.0, 3.0, 1.0, 0.1, 0.01}

@@ -65,3 +65,16 @@ Evaluating the 941,608 execution packets across various $\beta$ multipliers:
 
 1. **Model Stability**: At 99.24% true negative rate on raw, uncurated network captures with active package updates and video streams, the autoencoder baseline is functioning as expected.
 2. **Recommended $\beta$ for Mixed/Noisy Traffic**: Increasing `threshold_beta` to `5.5` filters out 99.0% of borderline benign noise (like `apt` package downloads) while keeping the detection sensitivity well below the multi-hundred/thousand scores seen in network anomalies and floods.
+
+---
+
+## References
+
+1. **UNSW Sydney IoT Traffic Repository**:
+   - A. Sivanathan, H. H. Gharakheili, F. Loi, A. Radford, C. Xiang, and V. Sivaraman, *"Classifying IoT Devices in Smart Environments Using Network Traffic Characteristics"*, IEEE Transactions on Mobile Computing (TMC), 18(8):1745–1759, 2018.
+2. **Kitsune / KitNET Architecture**:
+   - Y. Mirsky, T. Doitshman, Y. Elovici, and A. Shabtai, *"Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"*, Proceedings of the Network and Distributed System Security Symposium (**NDSS 2018**). [DOI: 10.14722/ndss.2018.23204](https://doi.org/10.14722/ndss.2018.23204).
+3. **Dynamic ML & Evasion Practicality**:
+   - M. elShehaby and A. Matrawy, *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*, arXiv:2306.05494, March 2026. (Archived in [`papers/dynamic_realtime.pdf`](../papers/dynamic_realtime.pdf)).
+
+*For complete BibTeX entries and foundational algorithm notes, see [**`REFERENCES.md`**](../REFERENCES.md).*

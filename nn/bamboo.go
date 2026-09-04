@@ -1,3 +1,6 @@
+// Theoretical Foundation:
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.3: Anomaly Detector).
+//   - elShehaby & Matrawy, "Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones", arXiv:2306.05494, 2026.
 package nn
 
 import (

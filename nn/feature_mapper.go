@@ -1,3 +1,8 @@
+// Package nn implements the neural network anomaly detection modules of Bamboo.
+//
+// Theoretical Foundation:
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.2: Feature Mapper).
+//   - Partitions features into k correlated clusters with maximum size constraint m using average linkage correlation distance.
 package nn
 
 import (
@@ -5,7 +10,7 @@ import (
 	"sort"
 )
 
-// FeatureMapper groups 115 features into k <= m correlated clusters
+// FeatureMapper groups 100 features into k clusters (each size <= m)
 type FeatureMapper struct {
 	NumFeatures int
 	MaxCluster  int // m: maximum features per autoencoder (e.g. 10)

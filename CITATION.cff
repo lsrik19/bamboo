@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use or reference Bamboo NIDS, please cite it using the metadata from this file."
+title: "Bamboo: A Lightweight Unsupervised Network Intrusion Detection System in Go"
+authors:
+  - given-names: "Lohith Srikar"
+repository-code: "https://github.com/lsrik19/bamboo"
+license: "MIT"
+keywords:
+  - "network intrusion detection"
+  - "anomaly detection"
+  - "autoencoder ensemble"
+  - "iot security"
+  - "kitsune"
+  - "online machine learning"
+references:
+  - type: conference-paper
+    authors:
+      - family-names: "Mirsky"
+        given-names: "Yisroel"
+      - family-names: "Doitshman"
+        given-names: "Tomer"
+      - family-names: "Elovici"
+        given-names: "Yuval"
+      - family-names: "Shabtai"
+        given-names: "Asaf"
+    title: "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"
+    conference: "Proceedings of the Network and Distributed System Security Symposium (NDSS)"
+    year: 2018
+    doi: "10.14722/ndss.2018.23204"
+  - type: article
+    authors:
+      - family-names: "elShehaby"
+        given-names: "Mohamed"
+      - family-names: "Matrawy"
+        given-names: "Ashraf"
+    title: "Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"
+    journal: "arXiv preprint arXiv:2306.05494"
+    year: 2026

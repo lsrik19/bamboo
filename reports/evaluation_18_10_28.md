@@ -57,3 +57,16 @@
 2. **Grace Period Considerations ($N_{AD}$):**
    - **Baseline Detection Mode ($N_{AD} = 500,000$):** Catches the glitch immediately at packet 1.1M.
    - **Noise-Tolerant Mode ($N_{AD} \ge 2,000,000$):** If an operator wants the model to accept such storms as normal, the training window must encompass the incident to prevent false alarms.
+
+---
+
+## 5. References
+
+1. **UNSW Sydney IoT Traffic Repository**:
+   - A. Sivanathan, H. H. Gharakheili, F. Loi, A. Radford, C. Xiang, and V. Sivaraman, *"Classifying IoT Devices in Smart Environments Using Network Traffic Characteristics"*, IEEE Transactions on Mobile Computing (TMC), 18(8):1745–1759, 2018.
+2. **Kitsune / KitNET Architecture**:
+   - Y. Mirsky, T. Doitshman, Y. Elovici, and A. Shabtai, *"Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"*, Proceedings of the Network and Distributed System Security Symposium (**NDSS 2018**). [DOI: 10.14722/ndss.2018.23204](https://doi.org/10.14722/ndss.2018.23204).
+3. **Dynamic ML & Evasion Practicality**:
+   - M. elShehaby and A. Matrawy, *"Evasion Adversarial Attacks Remain Impractical Against ML-based Network Intrusion Detection Systems, Especially Dynamic Ones"*, arXiv:2306.05494, March 2026. (Archived in [`papers/dynamic_realtime.pdf`](../papers/dynamic_realtime.pdf)).
+
+*For complete BibTeX entries and foundational algorithm notes, see [**`REFERENCES.md`**](../REFERENCES.md).*

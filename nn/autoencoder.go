@@ -1,3 +1,6 @@
+// Theoretical Foundation:
+//   - Vincent et al., "Extracting and Composing Robust Features with Denoising Autoencoders", ICML 2008.
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.3).
 package nn
 
 import (
@@ -5,8 +8,7 @@ import (
 	"math/rand"
 )
 
-// Autoencoder represents a denoising autoencoder with tied weights (W_prime = W.T)
-// Matches the original Bamboo dA.py implementation
+// Autoencoder represents a single-hidden-layer denoising autoencoder with tied weights (W' = W.T)
 type Autoencoder struct {
 	NIn     int     // Visible input dimension
 	NHidden int     // Bottleneck hidden layer dimension

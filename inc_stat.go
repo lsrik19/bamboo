@@ -1,3 +1,8 @@
+// Package main implements incremental damped statistics for network traffic monitoring.
+//
+// Theoretical Foundation:
+//   - Mirsky et al., "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection", NDSS 2018 (Section 3.1: AfterImage).
+//   - Welford, B. P., "Note on a Method for Calculating Corrected Sums of Squares and Products", Technometrics 1962.
 package main
 
 import (
