@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/google/gopacket"
@@ -48,16 +47,15 @@ func parsePacket(packet gopacket.Packet) *PacketMetaData {
 		return meta
 	}
 
-	// IPv4 Layer
+	// IP Layer
 	if ipLayer := packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
 		meta.SrcIP = ip.SrcIP.String()
 		meta.DstIP = ip.DstIP.String()
-		// ignoring IPv6 for now
-		// } else if ip6Layer := packet.Layer(layers.LayerTypeIPv6); ip6Layer != nil {
-		// 	ip6, _ := ip6Layer.(*layers.IPv6)
-		// 	meta.SrcIP = ip6.SrcIP.String()
-		// 	meta.DstIP = ip6.DstIP.String()
+	} else if ip6Layer := packet.Layer(layers.LayerTypeIPv6); ip6Layer != nil {
+		ip6, _ := ip6Layer.(*layers.IPv6)
+		meta.SrcIP = ip6.SrcIP.String()
+		meta.DstIP = ip6.DstIP.String()
 	} else {
 		// Non-IP
 		return nil
@@ -74,7 +72,7 @@ func parsePacket(packet gopacket.Packet) *PacketMetaData {
 		meta.SrcPort = udp.SrcPort.String()
 		meta.DstPort = udp.DstPort.String()
 		meta.Protocol = "UDP"
-	} else if icmpLayer := packet.Layer(layers.LayerTypeICMPv4); icmpLayer != nil {
+	} else if packet.Layer(layers.LayerTypeICMPv4) != nil || packet.Layer(layers.LayerTypeICMPv6) != nil {
 		meta.Protocol = "ICMP"
 		meta.SrcPort = "0"
 		meta.DstPort = "0"
@@ -85,14 +83,4 @@ func parsePacket(packet gopacket.Packet) *PacketMetaData {
 	}
 
 	return meta
-}
-
-// temporary logging function for testing
-func processExtractedPacket(meta *PacketMetaData) {
-	fmt.Printf("[%s] %s:%s -> %s:%s | %d bytes\n",
-		meta.Protocol,
-		meta.SrcIP, meta.SrcPort,
-		meta.DstIP, meta.DstPort,
-		meta.Length,
-	)
 }

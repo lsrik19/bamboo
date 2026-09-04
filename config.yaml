@@ -1,16 +1,26 @@
 # Bamboo NIDS Configuration
 
 # Network Capture Settings
-pcap_path: "" # Path to PCAP file (leave empty for live capture)
-interface: "en0"                                  # Live capture interface (e.g., "eth0")
+pcap_path: "pcaps/18-10-23.pcap" # Path to PCAP file (leave empty for live capture)
+interface: ""                                  # Live capture interface (e.g., "eth0")
 snap_len: 256                                  # Snapshot length for packet capture
-csv_output: "results/scores.csv"               # Where to log scores (empty string disables CSV logging)
+bpf_filter: ""                                 # Optional BPF filter (e.g. "ip and not broadcast")
+csv_output: "results/scores.csv"               # Where to log scores
+csv_enabled: true                              # Enable/disable CSV logging
+
+# Model Persistence
+model_save_path: ""                            # Path to save trained model (e.g., "models/bamboo.model")
+model_load_path: ""                            # Path to load pre-trained model (e.g., "models/bamboo.model")
+
+# Memory Management (Decay Eviction)
+cleanup_interval: 100000                       # Eviction sweep interval in packets (0 to disable)
+decay_threshold: 0.001                         # Weight threshold for evicting inactive states
 
 # Bamboo Hyperparameters
 num_features: 100         # 20 per lambda × 5 lambdas
 max_cluster_m: 10         # Max features per autoencoder
 fm_grace_period: 50000   # N_FM: packets to learn feature clustering
-ad_grace_period: 200000  # N_AD: packets to train autoencoders
+ad_grace_period: 500000  # N_AD: packets to train autoencoders
 threshold_beta: 4.0       # Log-Normal Sigma multiplier for anomaly threshold
 
 # Observability

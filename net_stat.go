@@ -39,6 +39,8 @@ type NetStat struct {
 	LastTime   map[JitterKey]float64
 	HT_HpHp    map[SocketPairKey][]*IncStatCov
 	HT_SrcSock map[SocketKey][]*IncStat
+
+	featureBuf []float64 // pre-allocated scratch buffer for feature extraction
 }
 
 func NewNetStat() *NetStat {
@@ -50,6 +52,7 @@ func NewNetStat() *NetStat {
 		LastTime:   make(map[JitterKey]float64),
 		HT_HpHp:    make(map[SocketPairKey][]*IncStatCov),
 		HT_SrcSock: make(map[SocketKey][]*IncStat),
+		featureBuf: make([]float64, 0, 100),
 	}
 }
 
@@ -93,7 +96,7 @@ func getOrCreateCov[K comparable](table map[K][]*IncStatCov, key K) []*IncStatCo
 
 // UpdateAndExtract updates statistics with the packet and returns the feature vector.
 func (ns *NetStat) UpdateAndExtract(meta *PacketMetaData) []float64 {
-	features := make([]float64, 0, 100) // 20 per lambda × 5 lambdas
+	features := ns.featureBuf[:0] // reset length, reuse backing array
 
 	x := float64(meta.Length)
 	t := meta.Timestamp
@@ -157,4 +160,75 @@ func (ns *NetStat) UpdateAndExtract(meta *PacketMetaData) []float64 {
 	}
 
 	return features
+}
+
+func is1DDecayed(stats []*IncStat, currentTime float64, threshold float64) bool {
+	// The slowest decaying statistic is at the end of the slice (lambda = 0.01)
+	slowest := stats[len(stats)-1]
+	return slowest.DecayedWeight(currentTime) < threshold
+}
+
+func isCovDecayed(statsCov []*IncStatCov, currentTime float64, threshold float64) bool {
+	slowest := statsCov[len(statsCov)-1]
+	return slowest.IsDecayed(currentTime, threshold)
+}
+
+// TotalEntries returns the total number of tracked keys across all internal hash tables
+func (ns *NetStat) TotalEntries() int {
+	return len(ns.HT_MAC_IP) + len(ns.HT_SrcIP) + len(ns.HT_Jitter) +
+		len(ns.HT_SrcSock) + len(ns.HT_HH) + len(ns.HT_HpHp)
+}
+
+// Cleanup evicts inactive entries whose exponential weights have decayed below threshold.
+// Returns the number of evicted entries.
+func (ns *NetStat) Cleanup(currentTime float64, threshold float64) int {
+	if threshold <= 0 {
+		threshold = 0.001
+	}
+	evicted := 0
+
+	for k, stats := range ns.HT_MAC_IP {
+		if is1DDecayed(stats, currentTime, threshold) {
+			delete(ns.HT_MAC_IP, k)
+			evicted++
+		}
+	}
+
+	for k, stats := range ns.HT_SrcIP {
+		if is1DDecayed(stats, currentTime, threshold) {
+			delete(ns.HT_SrcIP, k)
+			evicted++
+		}
+	}
+
+	for k, stats := range ns.HT_Jitter {
+		if is1DDecayed(stats, currentTime, threshold) {
+			delete(ns.HT_Jitter, k)
+			delete(ns.LastTime, k)
+			evicted++
+		}
+	}
+
+	for k, stats := range ns.HT_SrcSock {
+		if is1DDecayed(stats, currentTime, threshold) {
+			delete(ns.HT_SrcSock, k)
+			evicted++
+		}
+	}
+
+	for k, statsCov := range ns.HT_HH {
+		if isCovDecayed(statsCov, currentTime, threshold) {
+			delete(ns.HT_HH, k)
+			evicted++
+		}
+	}
+
+	for k, statsCov := range ns.HT_HpHp {
+		if isCovDecayed(statsCov, currentTime, threshold) {
+			delete(ns.HT_HpHp, k)
+			evicted++
+		}
+	}
+
+	return evicted
 }

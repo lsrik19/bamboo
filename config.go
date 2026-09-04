@@ -10,10 +10,20 @@ import (
 // Config holds all the hyper-parameters and settings for Bamboo
 type Config struct {
 	// Capture Settings
-	PcapPath  string `yaml:"pcap_path"`
-	Interface string `yaml:"interface"`
-	SnapLen   int32  `yaml:"snap_len"`
-	CSVOutput string `yaml:"csv_output"`
+	PcapPath   string `yaml:"pcap_path"`
+	Interface  string `yaml:"interface"`
+	SnapLen    int32  `yaml:"snap_len"`
+	BPFFilter  string `yaml:"bpf_filter"`
+	CSVOutput  string `yaml:"csv_output"`
+	CSVEnabled *bool  `yaml:"csv_enabled"`
+
+	// Model Persistence Settings
+	ModelSavePath string `yaml:"model_save_path"`
+	ModelLoadPath string `yaml:"model_load_path"`
+
+	// Memory Management Settings
+	CleanupInterval int     `yaml:"cleanup_interval"`
+	DecayThreshold  float64 `yaml:"decay_threshold"`
 
 	// Bamboo Model Settings
 	NumFeatures   int     `yaml:"num_features"`
@@ -42,4 +52,12 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// IsCSVEnabled returns true if CSV logging is enabled
+func (c *Config) IsCSVEnabled() bool {
+	if c.CSVEnabled != nil {
+		return *c.CSVEnabled && c.CSVOutput != ""
+	}
+	return c.CSVOutput != ""
 }

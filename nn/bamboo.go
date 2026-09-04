@@ -1,7 +1,7 @@
 package nn
 
 import (
-	"fmt"
+	"log/slog"
 	"math"
 )
 
@@ -53,7 +53,20 @@ func (kn *Bamboo) InitEnsemble(clusters [][]int) {
 
 	// Output layer autoencoder takes k inputs (the RMSEs of L1)
 	kn.OutputLayer = NewAutoencoder(kn.K, kn.HiddenRatio, kn.LR)
-	fmt.Printf("[Bamboo] Initialized %d ensemble autoencoders and 1 output autoencoder\n", kn.K)
+	slog.Info("Bamboo ensemble initialized", "ensemble_count", kn.K, "output_layer", 1)
+}
+
+// InitBuffers initializes transient scratch buffers for Bamboo and its autoencoders
+func (kn *Bamboo) InitBuffers() {
+	kn.RmseBuffer = make([]float64, kn.K)
+	for _, ae := range kn.EnsembleLayer {
+		if ae != nil {
+			ae.InitScratchBuffers()
+		}
+	}
+	if kn.OutputLayer != nil {
+		kn.OutputLayer.InitScratchBuffers()
+	}
 }
 
 // Process evaluates a partitioned sub-instance vector v = {v1, ..., vk}
@@ -76,11 +89,10 @@ func (kn *Bamboo) Process(v [][]float64) (float64, bool, bool) {
 		outRMSE := kn.OutputLayer.TrainStep(kn.RmseBuffer)
 
 		// Track training RMSE statistics for robust threshold computation
-		// Track training RMSE statistics for robust threshold computation
 		if outRMSE > kn.MaxRMSE {
 			kn.MaxRMSE = outRMSE
 		}
-		
+
 		// Use log-normal distribution stats
 		val := outRMSE
 		if val <= 1e-12 {
@@ -93,7 +105,7 @@ func (kn *Bamboo) Process(v [][]float64) (float64, bool, bool) {
 		if kn.Count == kn.GracePeriod {
 			kn.IsTrained = true
 
-			// Compute robust log-normal threshold: T = exp(mean_log + beta * sigma_log)
+			// Compute log-normal threshold: T = exp(mean_log + beta * sigma_log)
 			n := float64(kn.GracePeriod)
 			meanLog := kn.TrainRMSESum / n
 			variance := (kn.TrainRMSESS / n) - (meanLog * meanLog)
@@ -103,9 +115,12 @@ func (kn *Bamboo) Process(v [][]float64) (float64, bool, bool) {
 			sigmaLog := math.Sqrt(variance)
 			kn.Threshold = math.Exp(meanLog + kn.ThresholdBeta*sigmaLog)
 
-			fmt.Printf("\n[Bamboo] AD Grace Period Complete!\n")
-			fmt.Printf("[Bamboo] Log-Normal Stats — Mean(log): %.6f | StdDev(log): %.6f\n", meanLog, sigmaLog)
-			fmt.Printf("[Bamboo] Threshold = %.6f (exp(mean + %.1f * sigma))\n\n", kn.Threshold, kn.ThresholdBeta)
+			slog.Info("AD Grace Period Complete",
+				"mean_log", meanLog,
+				"sigma_log", sigmaLog,
+				"threshold", kn.Threshold,
+				"threshold_beta", kn.ThresholdBeta,
+			)
 		}
 
 		return outRMSE, false, true
